@@ -34,3 +34,8 @@ INDEX_SELECT_PROMPT = """# 任务
 # 数据样例
 {data}
 """
+
+
+QUERY_REWRITE_PROMPT = """
+我现在要为{entity}生成一份{report_type}报告，在这个过程中需要搜集大量资料，请帮我写几个相关查询语句，帮助我更好的找到资料
+"""
