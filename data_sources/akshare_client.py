@@ -142,7 +142,7 @@ class AkShareClient:
             if df is not None and not df.empty:
                 df = self._clean_financial_data(df)
                 logger.info(f"成功获取财务指标数据: {symbol}, 共{len(df)}条记录")
-                return df
+                return df.sort_values(by="报告期", ascending=False)
             else:
                 logger.warning(f"未获取到财务指标数据: {symbol}")
                 return None
@@ -193,7 +193,14 @@ class AkShareClient:
             result["stock_info"] = stock_info
 
         logger.info(f"成功获取 {symbol} 的所有财务数据，包含 {len(result)} 个数据集")
-        return result
+
+        # test
+        clean_result = {}
+        for k, v in result.items():
+            if isinstance(v, pd.DataFrame) and not v.empty:
+                clean_result[k] = v.head(3).dropna(axis=1, how="all").fillna(-999).to_dict(orient="records")
+
+        return clean_result
 
     def _clean_financial_data(self, df: pd.DataFrame) -> pd.DataFrame:
         """

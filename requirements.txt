@@ -2,3 +2,10 @@ akshare
 loguru
 fastmcp
 openai
+langgraph
+langchain-openai
+langchain
+langchain-mcp-adapters
+pre-commit
+black
+flake8

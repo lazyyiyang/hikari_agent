@@ -4,6 +4,10 @@
 """
 
 from .akshare_client import AkShareClient
-from .search_client import SearchClient
 
-__all__ = ["AkShareClient", "SearchClient"]
+# from .search_client import SearchClient
+
+__all__ = [
+    "AkShareClient",
+    #    "SearchClient",
+]
