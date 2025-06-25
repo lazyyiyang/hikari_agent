@@ -9,3 +9,4 @@ langchain-mcp-adapters
 pre-commit
 black
 flake8
+exa_py
