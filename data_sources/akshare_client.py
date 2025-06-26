@@ -188,9 +188,9 @@ class AkShareClient:
             result["financial_indicators"] = financial_indicators
 
         # 获取股票基本信息
-        stock_info = self.get_stock_info(symbol)
-        if stock_info is not None:
-            result["stock_info"] = stock_info
+        # stock_info = self.get_stock_info(symbol)
+        # if stock_info is not None:
+        #     result["stock_info"] = stock_info
 
         logger.info(f"成功获取 {symbol} 的所有财务数据，包含 {len(result)} 个数据集")
 

@@ -4,12 +4,14 @@ from fastmcp import FastMCP
 from typing import Annotated, Literal
 from pydantic import Field
 from openai import OpenAI
+from exa_py import Exa
 from dotenv import load_dotenv
 
-from template import CODER_PROMPT
+from template import CODER_PROMPT  # , SUMMARY_PROMPT
 from data_sources import AkShareClient
 from utils import parse_code
 from loguru import logger
+from index_calculator import calculate_financial_indices
 
 load_dotenv(override=True)
 
@@ -18,6 +20,7 @@ ai_client = OpenAI(
     api_key=os.getenv("API_KEY", ""),
     base_url="https://api.deepseek.com",
 )
+exa = Exa(os.getenv("EXA_API_KEY"))
 
 
 @mcp.tool(description="输入上市公司股票代码，返回上市公司相关数据")
@@ -32,11 +35,13 @@ def fetch_company_data(
     result_dict = client.get_all_financial_data(code, report_type)
     with open("tmp/data.json", "w", encoding="utf-8") as f:
         json.dump(result_dict, f, ensure_ascii=False, indent=4)
-    return "数据获取成功， 保存至tmp/data.json"
+
+    result = calculate_financial_indices()
+    return f"数据获取成功， 保存至tmp/data.json \n【指标计算结果】：{result}"
 
 
-@mcp.tool(description="需要对整理后的上市公司数据进行分析，生成数据分析代码")
-def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的分析思路")]) -> str:
+@mcp.tool(description="思考分析，提出数据分析需求，生成数据分析python代码")
+def data_analysis_coder(idea: Annotated[str, Field(description="思考后，提出的数据分析需求（不包含图表）")]) -> str:
     logger.info("代码生成中")
     with open("tmp/data.json", "r", encoding="utf-8") as f:
         data = json.load(f)
@@ -103,7 +108,26 @@ def code_interpreter(
         return result
     except Exception as e:
         logger.error(f"代码执行失败: {str(e)}")
-        return f"代码执行失败: {str(e)}\n错误代码：{script_code}"
+        return f"代码执行失败: {str(e)}"
+
+
+@mcp.tool(description="对当前状态的分析需求使用web检索")
+def exa_search(query: Annotated[str, Field(description="检索问题")]) -> str:
+    response = exa.search_and_contents(
+        query,
+        summary=True,
+        num_results=25,
+        start_published_date="2024-01-01",
+        end_published_date="2025-06-01",
+    )
+    results = "\n".join(
+        [
+            f"{res.published_date[:10]}: 《{res.title}》 | {res.summary}\n"
+            for res in response.results
+            if not res.summary.startswith("I am sorry")
+        ]
+    )
+    return results
 
 
 if __name__ == "__main__":

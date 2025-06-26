@@ -4,7 +4,6 @@ import asyncio
 import os
 import langchain
 
-
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
 from langchain_openai.chat_models import ChatOpenAI
@@ -37,6 +36,6 @@ async def data_analysis(query):
 
 
 if __name__ == "__main__":
-    query = "您是一位资深的投行研究员，请对浦发银行进行数据分析，只看年报即可，写出专业详细的分析报告，请务必遵守客观数据，不要编造"
+    query = "您是一位资深的投行研究员，今年是2025年，请对浦发银行数据分析(财报数据只看年报即可)、企业调研，搜集网络上的资料，对资料进行分析，写出专业详细的分析报告。"
     result = asyncio.run(data_analysis(query))
     print(result)
