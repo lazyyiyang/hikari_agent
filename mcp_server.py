@@ -12,6 +12,7 @@ from data_sources import AkShareClient
 from utils import parse_code
 from loguru import logger
 from index_calculator import calculate_financial_indices
+from zhipuai import ZhipuAI
 
 load_dotenv(override=True)
 
@@ -21,9 +22,10 @@ ai_client = OpenAI(
     base_url="https://api.deepseek.com",
 )
 exa = Exa(os.getenv("EXA_API_KEY"))
+zhipuai_client = ZhipuAI(api_key=os.getenv("ZHIPU_API_KEY"))
 
 
-@mcp.tool(description="输入上市公司股票代码，返回上市公司相关数据")
+@mcp.tool(description="输入上市公司股票代码，返回上市公司财务指标数据")
 def fetch_company_data(
     code: Annotated[str, Field(description="上市公司股票代码, 如: SH600000， SZ000001")],
     report_type: Annotated[
@@ -37,7 +39,7 @@ def fetch_company_data(
         json.dump(result_dict, f, ensure_ascii=False, indent=4)
 
     result = calculate_financial_indices()
-    return f"数据获取成功， 保存至tmp/data.json \n【指标计算结果】：{result}"
+    return f"数据获取成功， 保存至tmp/data.json \n【{code}指标计算结果】：{result}"
 
 
 @mcp.tool(description="思考分析，提出数据分析需求，生成数据分析python代码")
@@ -111,22 +113,37 @@ def code_interpreter(
         return f"代码执行失败: {str(e)}"
 
 
+# @mcp.tool(description="对当前状态的分析需求使用web检索")
+# def exa_search(query: Annotated[str, Field(description="检索问题")]) -> str:
+#     response = exa.search_and_contents(
+#         query,
+#         summary=True,
+#         num_results=25,
+#         start_published_date="2024-01-01",
+#         end_published_date="2025-06-01",
+#     )
+#     results = "\n".join(
+#         [
+#             f"{res.published_date[:10]}: 《{res.title}》 | {res.summary}\n"
+#             for res in response.results
+#             if not res.summary.startswith("I am sorry")
+#         ]
+#     )
+#     return results
+
+
 @mcp.tool(description="对当前状态的分析需求使用web检索")
-def exa_search(query: Annotated[str, Field(description="检索问题")]) -> str:
-    response = exa.search_and_contents(
-        query,
-        summary=True,
-        num_results=25,
-        start_published_date="2024-01-01",
-        end_published_date="2025-06-01",
-    )
-    results = "\n".join(
-        [
-            f"{res.published_date[:10]}: 《{res.title}》 | {res.summary}\n"
-            for res in response.results
-            if not res.summary.startswith("I am sorry")
-        ]
-    )
+def web_search(query: Annotated[str, Field(description="检索问题")]) -> str:
+    # response = zhipuai_client.web_search.web_search(
+    #     search_engine="search_pro",
+    #     search_query=query,
+    #     count=5,
+    #     search_recency_filter="oneYear",
+    #     content_size="high"
+    #     )
+    # results = "\n".join(f"{res.title}: {res.content}" for res in response.search_result)
+    with open("tmp/web_content.txt", "r", encoding="utf-8") as f:
+        results = f.read()
     return results
 
 
