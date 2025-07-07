@@ -124,6 +124,42 @@ class AkShareClient:
             logger.error(f"获取股票基本信息失败: {symbol}, 错误: {str(e)}")
             return None
 
+    def get_stock_value(self, symbol: str) -> Optional[Dict]:
+        """
+        获取股票估值信息
+
+        Args:
+            symbol: 股票代码
+
+        Returns:
+            dict: 股票估值信息
+        """
+        try:
+            logger.info("获取估值信息")
+
+            # 获取股票估值信息
+            symbol = symbol.replace("SH", "").replace("SZ", "").replace("sh", "").replace("sz", "")
+            stock_value = ak.stock_value_em(symbol=symbol)
+            # latest_date = stock_value['数据日期'].max()
+
+            # 日期格式修改
+            stock_value["数据日期"] = pd.to_datetime(stock_value["数据日期"].astype(str)).dt.date
+            target_date = pd.to_datetime("2025-06-30").date()
+            date_mask = stock_value["数据日期"] == target_date
+            stock_value = stock_value[date_mask]
+
+            logger.info(f"stock_value:{stock_value}")
+            result = {
+                "symbol": symbol,
+                "stock_value": stock_value.to_dict() if stock_value is not None else {},
+            }
+            logger.info(f"成功获取估值信息:{symbol}")
+            return result
+
+        except Exception as e:
+            logger.error(f"获取估值信息失败:{symbol}, 错误{str(e)}")
+            return None
+
     def get_financial_indicators(self, symbol: str) -> Optional[pd.DataFrame]:
         """
         获取财务指标数据
@@ -191,6 +227,11 @@ class AkShareClient:
         # stock_info = self.get_stock_info(symbol)
         # if stock_info is not None:
         #     result["stock_info"] = stock_info
+
+        # 获取估值信息
+        stock_value = self.get_stock_value(symbol)
+        if stock_value is not None:
+            result["stock_value"] = stock_value
 
         logger.info(f"成功获取 {symbol} 的所有财务数据，包含 {len(result)} 个数据集")
 

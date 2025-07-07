@@ -6,11 +6,12 @@ from pydantic import Field
 from openai import OpenAI
 from dotenv import load_dotenv
 
-from template import CODER_PROMPT, VALUATION_PROMPT
-from data_sources import AkShareClient
-from utils import parse_code
-from loguru import logger
+# from template import CODER_PROMPT
+from template import VALUATION_PROMPT, ANALYSIS_PROMPT
+from data_sources import AkShareClient, zhipu_web_search
 
+# from utils import parse_code
+from loguru import logger
 
 load_dotenv(override=True)
 
@@ -36,7 +37,7 @@ def fetch_company_data(
     return "数据获取成功， 保存至tmp/data.json"
 
 
-@mcp.tool(description="需要对整理后的上市公司数据进行分析，生成数据分析代码")
+'''@mcp.tool(description="需要对整理后的上市公司数据进行分析，生成数据分析代码")
 def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的分析思路")]) -> str:
     logger.info("代码生成中")
     with open("tmp/data.json", "r", encoding="utf-8") as f:
@@ -60,7 +61,35 @@ def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的�
     with open("tmp/code.py", "w", encoding="utf-8") as f:
         f.write(code)
     logger.info(f"代码生成结果\n{code}")
-    return "代码生成成功， 保存至tmp/code.py"
+    return "代码生成成功， 保存至tmp/code.py"'''
+
+
+@mcp.tool(description="需要对整理后的上市公司数据进行分析")
+def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的分析思路")]) -> str:
+    logger.info("分析结果生成中")
+    with open("tmp/data.json", "r", encoding="utf-8") as f1:
+        data = json.load(f1)
+    data = {k: v[0] for k, v in data.items()}
+    with open("tmp/search_data.json", "r", encoding="utf-8") as f2:
+        search_data = json.load(f2)
+    data.update({"search_results": search_data})
+
+    prompt = ANALYSIS_PROMPT.format(data=data, idea=idea)
+    analysis_result = (
+        ai_client.chat.completions.create(
+            model="deepseek-chat",
+            messages=[
+                {"role": "system", "content": "You are a senior data analyst."},
+                {"role": "user", "content": prompt},
+            ],
+            max_tokens=4096,
+            temperature=0.5,
+        )
+        .choices[0]
+        .message.content
+    )
+    logger.info(f"数据分析结果\n {analysis_result}")
+    return analysis_result
 
 
 @mcp.tool(description="对公司进行估值，生成投资建议")
@@ -87,8 +116,27 @@ def corp_valuation(
         .choices[0]
         .message.content
     )
+    with open("tmp/valuation_data.json", "w", encoding="utf-8") as f:
+        json.dump(valuation_advice, f, ensure_ascii=False, indent=4)
+    return "数据获取成功， 保存至tmp/valuation_data.json"
 
-    return valuation_advice
+
+@mcp.tool(description="对问题进行深度搜索，生成相应的建议")
+def web_deep_search(idea: Annotated[str, Field(description="专业有根据的搜索")]) -> str:
+    search_result = "默认搜索结果"
+    try:
+        search_result = zhipu_web_search.web_search(
+            search_engine="search_pro",
+            search_query=f"{idea} 浦发银行估值分析",
+        )
+        logger.info("深度搜索完成")
+        with open("tmp/search_data.json", "w", encoding="utf-8") as f:
+            json.dump(search_result, f, ensure_ascii=False, indent=2)
+    except Exception as e:
+        logger.error(f"深度搜索失败:{e}")
+        search_result = f"搜索失败: {str(e)}"  # 异常时返回错误信息
+
+    return "数据获取成功， 保存至tmp/search_data.json"
 
 
 # @mcp.tool(description="由于上市公司数据指标较多，使用该工具对数据进行指标过滤，生成相应的过滤python代码，得到更便于分析的数据")
@@ -118,7 +166,7 @@ def corp_valuation(
 #     return code
 
 
-@mcp.tool(description="执行Python代码，返回执行结果")
+'''@mcp.tool(description="执行Python代码，返回执行结果")
 def code_interpreter(
     # code: Annotated[str, Field(description="需要执行的代码")],
     # data: Annotated[Dict, Field(description="需要执行代码的数据")],
@@ -132,7 +180,7 @@ def code_interpreter(
         return result
     except Exception as e:
         logger.error(f"代码执行失败: {str(e)}")
-        return f"代码执行失败: {str(e)}\n错误代码：{script_code}"
+        return f"代码执行失败: {str(e)}\n错误代码：{script_code}"'''
 
 
 if __name__ == "__main__":
