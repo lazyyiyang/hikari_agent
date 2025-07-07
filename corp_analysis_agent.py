@@ -7,7 +7,9 @@ import langchain
 from langchain_mcp_adapters.tools import load_mcp_tools
 from langgraph.prebuilt import create_react_agent
 from langchain_openai.chat_models import ChatOpenAI
-from template import COMPANY_AGENT_PROMPT
+
+# from template import INDEX_SELECT_PROMPT
+from template import VALUATION_PROMPT
 from dotenv import load_dotenv
 
 load_dotenv(override=True)
@@ -21,14 +23,14 @@ llm = ChatOpenAI(
 
 
 async def data_analysis(query):
-    async with streamablehttp_client("http://localhost:8000/mcp") as (read, write, _):
+    async with streamablehttp_client("http://localhost:8005/mcp") as (read, write, _):
         async with ClientSession(read, write) as session:
             # Initialize the connection
             await session.initialize()
             # Get tools
             tools = await load_mcp_tools(session)
             agent = create_react_agent(llm, tools)
-            agent_response = await agent.ainvoke({"messages": query})
+            agent_response = await agent.ainvoke({"messages": [{"role": "user", "content": query}]})  # 直接使用字符串参数
             last_response = agent_response["messages"][-1]
             with open("result/demo.md", "w", encoding="utf-8") as f:
                 f.write(last_response.content)
@@ -36,8 +38,6 @@ async def data_analysis(query):
 
 
 if __name__ == "__main__":
-    query = COMPANY_AGENT_PROMPT.format(
-        company="浦发银行",
-    )
+    query = VALUATION_PROMPT.format(data="浦发银行估值数据", idea="首先获取深度搜索得数据，其次获取相关数据后进行估值分析")
     result = asyncio.run(data_analysis(query))
     print(result)

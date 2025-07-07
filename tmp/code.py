@@ -1,5 +1,6 @@
 import json
-import pandas as pd
+
+# import pandas as pd
 
 # 读取数据
 with open("tmp/data.json", "r", encoding="utf-8") as f:
@@ -9,81 +10,95 @@ with open("tmp/data.json", "r", encoding="utf-8") as f:
 result = {}
 
 
-# 处理空值（-999替换为NaN）
-def clean_data(df):
-    return df.replace(-999, pd.NA)
+# 处理空值（-999）
+def handle_null(value):
+    return None if value == -999 else value
 
 
-# 1. 财务表现分析
-balance_sheet = pd.DataFrame(data["balance_sheet_年报"])
-balance_sheet = clean_data(balance_sheet)
-income_statement = pd.DataFrame(data["income_statement_年报"])
-income_statement = clean_data(income_statement)
+# 1. 营收分析
+income_data = data.get("income_statement_年报", {})
+result["营业收入"] = handle_null(income_data.get("OPERATE_INCOME"))
+result["营业收入同比增长"] = handle_null(income_data.get("OPERATE_INCOME_YOY"))
+result["利息净收入"] = handle_null(income_data.get("INTEREST_NI"))
+result["利息净收入同比增长"] = handle_null(income_data.get("INTEREST_NI_YOY"))
+result["手续费及佣金净收入"] = handle_null(income_data.get("FEE_COMMISSION_NI"))
+result["手续费及佣金净收入同比增长"] = handle_null(income_data.get("FEE_COMMISSION_NI_YOY"))
 
-result["总资产(元)"] = balance_sheet["TOTAL_ASSETS"].iloc[0]
-result["总负债(元)"] = balance_sheet["TOTAL_LIABILITIES"].iloc[0]
-result["净资产(元)"] = balance_sheet["TOTAL_EQUITY"].iloc[0]
-result["资产负债率"] = f"{balance_sheet['TOTAL_LIABILITIES'].iloc[0] / balance_sheet['TOTAL_ASSETS'].iloc[0] * 100:.2f}%"
-result["营业收入(元)"] = income_statement["OPERATE_INCOME"].iloc[0]
-result["净利润(元)"] = income_statement["NETPROFIT"].iloc[0]
-result["归母净利润(元)"] = income_statement["PARENT_NETPROFIT"].iloc[0]
-
-# 2. 盈利能力分析
-result["净资产收益率(ROE)"] = f"{income_statement['NETPROFIT'].iloc[0] / balance_sheet['TOTAL_EQUITY'].iloc[0] * 100:.2f}%"
-result["总资产收益率(ROA)"] = f"{income_statement['NETPROFIT'].iloc[0] / balance_sheet['TOTAL_ASSETS'].iloc[0] * 100:.2f}%"
-result["净利率"] = f"{income_statement['NETPROFIT'].iloc[0] / income_statement['OPERATE_INCOME'].iloc[0] * 100:.2f}%"
+# 2. 净利润分析
+result["净利润"] = handle_null(income_data.get("NETPROFIT"))
+result["净利润同比增长"] = handle_null(income_data.get("NETPROFIT_YOY"))
+result["归母净利润"] = handle_null(income_data.get("PARENT_NETPROFIT"))
+result["归母净利润同比增长"] = handle_null(income_data.get("PARENT_NETPROFIT_YOY"))
+result["扣非净利润"] = handle_null(income_data.get("DEDUCT_PARENT_NETPROFIT"))
+result["扣非净利润同比增长"] = handle_null(income_data.get("DEDUCT_PARENT_NETPROFIT_YOY"))
 
 # 3. 资产质量分析
-result["不良贷款率"] = "需从不良贷款数据计算"  # 原始数据中无直接指标
-result["拨备覆盖率"] = "需从拨备数据计算"  # 原始数据中无直接指标
-result["贷款总额(元)"] = balance_sheet["LOAN_ADVANCE"].iloc[0]
+balance_data = data.get("balance_sheet_年报", {})
+result["总资产"] = handle_null(balance_data.get("TOTAL_ASSETS"))
+result["总负债"] = handle_null(balance_data.get("TOTAL_LIABILITIES"))
+result["净资产"] = handle_null(balance_data.get("TOTAL_EQUITY"))
+result["资产负债率"] = (
+    handle_null(balance_data.get("TOTAL_LIABILITIES")) / handle_null(balance_data.get("TOTAL_ASSETS"))
+    if handle_null(balance_data.get("TOTAL_ASSETS"))
+    else None
+)
 
-# 4. 资本充足率分析
-result["资本充足率"] = "需从监管指标计算"  # 原始数据中无直接指标
-result["核心一级资本充足率"] = "需从监管指标计算"
+# 贷款和垫款
+result["贷款和垫款总额"] = handle_null(balance_data.get("LOAN_ADVANCE"))
+result["贷款和垫款同比增长"] = handle_null(balance_data.get("LOAN_ADVANCE_YOY"))
 
-# 5. 业务结构分析
-result["利息净收入占比"] = f"{income_statement['INTEREST_NI'].iloc[0] / income_statement['OPERATE_INCOME'].iloc[0] * 100:.2f}%"
-result[
-    "手续费净收入占比"
-] = f"{income_statement['FEE_COMMISSION_NI'].iloc[0] / income_statement['OPERATE_INCOME'].iloc[0] * 100:.2f}%"
+# 信用减值损失
+result["信用减值损失"] = handle_null(income_data.get("CREDIT_IMPAIRMENT_LOSS"))
+result["信用减值损失同比变化"] = handle_null(income_data.get("CREDIT_IMPAIRMENT_LOSS_YOY"))
 
-# 6. 历史趋势分析（需要多期数据）
-result["总资产同比增长"] = f"{balance_sheet['TOTAL_ASSETS_YOY'].iloc[0]:.2f}%"
-result["营业收入同比增长"] = f"{income_statement['OPERATE_INCOME_YOY'].iloc[0]:.2f}%"
-result["净利润同比增长"] = f"{income_statement['NETPROFIT_YOY'].iloc[0]:.2f}%"
-result["归母净利润同比增长"] = f"{income_statement['PARENT_NETPROFIT_YOY'].iloc[0]:.2f}%"
+# 4. 盈利能力指标
+indicators_data = data.get("financial_indicators", {})
+result["净资产收益率"] = indicators_data.get("净资产收益率")
+result["销售净利率"] = indicators_data.get("销售净利率")
+result["基本每股收益"] = handle_null(indicators_data.get("基本每股收益"))
 
-# 补充财务指标
-financial_indicators = pd.DataFrame(data["financial_indicators"])
-result["基本每股收益(元)"] = financial_indicators["基本每股收益"].iloc[0]
-result["每股净资产(元)"] = financial_indicators["每股净资产"].iloc[0]
-result["净资产收益率(最新)"] = financial_indicators["净资产收益率"].iloc[0]
+# 5. 股息分析
+cash_flow_data = data.get("cash_flow_年报", {})
+result["现金分红金额"] = handle_null(cash_flow_data.get("ASSIGN_DIVIDEND_PORFIT"))
+result["现金分红金额同比增长"] = handle_null(cash_flow_data.get("ASSIGN_DIVIDEND_PORFIT_YOY"))
 
-# 现金流动分析
-cash_flow = pd.DataFrame(data["cash_flow_年报"])
-cash_flow = clean_data(cash_flow)
-result["经营活动现金流净额(元)"] = cash_flow["NETCASH_OPERATE"].iloc[0]
-result["投资活动现金流净额(元)"] = cash_flow["NETCASH_INVEST"].iloc[0]
-result["筹资活动现金流净额(元)"] = cash_flow["NETCASH_FINANCE"].iloc[0]
+# 计算股息率（假设当前股价为10元）
+share_capital = handle_null(balance_data.get("SHARE_CAPITAL"))
+if share_capital and result["现金分红金额"]:
+    dividend_per_share = result["现金分红金额"] / (share_capital * 10000)  # 转换为万股
+    result["股息率"] = dividend_per_share / 10 * 100  # 假设股价10元
+else:
+    result["股息率"] = None
+
+# 6. 现金流分析
+result["经营活动现金流净额"] = handle_null(cash_flow_data.get("NETCASH_OPERATE"))
+result["投资活动现金流净额"] = handle_null(cash_flow_data.get("NETCASH_INVEST"))
+result["筹资活动现金流净额"] = handle_null(cash_flow_data.get("NETCASH_FINANCE"))
+result["现金及现金等价物净增加额"] = handle_null(cash_flow_data.get("CCE_ADD"))
+
+# 7. 关键财务比率
+result["流动比率"] = indicators_data.get("流动比率")
+result["速动比率"] = indicators_data.get("速动比率")
+result["产权比率"] = indicators_data.get("产权比率")
+
+# 8. 行业对比指标（示例）
+# 这里可以添加与行业平均值的比较，需要行业数据
+
+# 处理结果中的None值
+result = {k: v for k, v in result.items() if v is not None}
 
 
-# 格式化大数字
+# 转换科学计数法为大数字
 def format_large_number(num):
-    if pd.isna(num):
-        return "N/A"
-    if abs(num) >= 1e12:
-        return f"{num/1e12:.2f}万亿"
-    elif abs(num) >= 1e8:
-        return f"{num/1e8:.2f}亿"
-    elif abs(num) >= 1e4:
-        return f"{num/1e4:.2f}万"
-    return str(num)
+    if isinstance(num, (int, float)):
+        if abs(num) >= 1e8:
+            return f"{num/1e8:.2f}亿"
+        elif abs(num) >= 1e4:
+            return f"{num/1e4:.2f}万"
+    return num
 
 
-for key in list(result.keys()):
-    if isinstance(result[key], (int, float)) and not pd.isna(result[key]):
-        if "率" not in key and "收益" not in key and "比" not in key:
-            result[key] = format_large_number(result[key])
+result = {k: format_large_number(v) if isinstance(v, (int, float)) else v for k, v in result.items()}
 
+# 返回结果
 result
