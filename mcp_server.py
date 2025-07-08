@@ -21,6 +21,8 @@ ai_client = OpenAI(
     base_url="https://api.deepseek.com",
 )
 
+logger.add("logs/app.log", rotation="10 MB", retention="30 days")
+
 
 @mcp.tool(description="输入上市公司股票代码，返回上市公司相关数据")
 def fetch_company_data(
@@ -184,4 +186,4 @@ def code_interpreter(
 
 
 if __name__ == "__main__":
-    mcp.run(transport="http", host="0.0.0.0", port=8005, path="/mcp")
+    mcp.run(transport="http", host="0.0.0.0", port=8007, path="/mcp")

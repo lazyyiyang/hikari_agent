@@ -23,7 +23,7 @@ llm = ChatOpenAI(
 
 
 async def data_analysis(query):
-    async with streamablehttp_client("http://localhost:8005/mcp") as (read, write, _):
+    async with streamablehttp_client("http://localhost:8007/mcp") as (read, write, _):
         async with ClientSession(read, write) as session:
             # Initialize the connection
             await session.initialize()
