@@ -38,6 +38,6 @@ async def data_analysis(query):
 
 
 if __name__ == "__main__":
-    query = VALUATION_PROMPT.format(data="浦发银行估值数据", idea="首先获取深度搜索得数据，其次获取相关数据后进行估值分析")
+    query = VALUATION_PROMPT.format(data="浦发银行估值数据", idea="首先获取深度搜索得数据，其次获取财务数据以及估值如PE等数据进行估值分析")
     result = asyncio.run(data_analysis(query))
     print(result)

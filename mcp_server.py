@@ -75,8 +75,12 @@ def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的�
     with open("tmp/search_data.json", "r", encoding="utf-8") as f2:
         search_data = json.load(f2)
     data.update({"search_results": search_data})
+    logger.info(f"分析数据获取:\n {data}")
+
+    logger.info(f"idea获取:\n {idea}")
 
     prompt = ANALYSIS_PROMPT.format(data=data, idea=idea)
+    logger.info(f"prompt生成:\n {prompt}")
     analysis_result = (
         ai_client.chat.completions.create(
             model="deepseek-chat",
@@ -97,14 +101,17 @@ def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的�
 @mcp.tool(description="对公司进行估值，生成投资建议")
 def corp_valuation(
     idea: Annotated[str, Field(description="专业详细的估值模型构建")],
-    stock_value_info: Annotated[list, Field(description="上市公司估值信息")],
+    stock_value_info: Annotated[dict, Field(description="上市公司估值信息")],
     code: Annotated[str, Field(description="上市公司股票代码, 如: SH600000， SZ000001")],
     data_date: Annotated[str, Field(description="数据日期，如：2025-05-30")],
 ) -> dict:
     client = AkShareClient()
     result_dict = client.get_stock_value(code)["stock_value"]
-    logger.info(f"成功获取估值数据: {result_dict}")
+    logger.info(f"成功获取估值数据:\n{result_dict}")
+    logger.info(f"成功获取估值idea:\n{idea}")
     prompt = VALUATION_PROMPT.format(data=result_dict, idea=idea)
+    logger.info(f"成功获取估值prompt:\n{prompt}")
+
     valuation_advice = (
         ai_client.chat.completions.create(
             model="deepseek-chat",
@@ -118,6 +125,7 @@ def corp_valuation(
         .choices[0]
         .message.content
     )
+
     with open("tmp/valuation_data.json", "w", encoding="utf-8") as f:
         json.dump(valuation_advice, f, ensure_ascii=False, indent=4)
     return "数据获取成功， 保存至tmp/valuation_data.json"
