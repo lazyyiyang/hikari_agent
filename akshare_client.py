@@ -187,6 +187,86 @@ class AkShareClient:
             logger.error(f"获取财务指标失败: {symbol}, 错误: {str(e)}")
             return None
 
+    def get_stock_news_em(self, symbol: str) -> Optional[pd.DataFrame]:
+        """
+        获取东方财富指定个股的新闻资讯数据
+        https://so.eastmoney.com/news/s?keyword=603777
+        
+        Args:
+            symbol (str): 股票代码，如 "603777"
+            
+        Returns:
+            pd.DataFrame: 个股新闻数据，包含关键词、新闻标题、新闻内容等字段
+        """
+        try:
+            logger.info(f"获取个股新闻数据: {symbol}")
+            
+            # 调用东方财富个股新闻接口
+            df = ak.stock_news_em(symbol=symbol)
+            
+            if df is None or df.empty:
+                logger.warning(f"未获取到个股新闻数据: {symbol}")
+                return None
+                
+            # 数据清洗和标准化
+            df = df.rename(columns={
+                '关键词': 'symbol',
+                '新闻标题': 'title',
+                '新闻内容': 'content',
+                '发布时间': 'publish_time',
+                '文章来源': 'source',
+                '新闻链接': 'url'
+            })
+            
+            # 转换时间格式
+            df['publish_time'] = pd.to_datetime(df['publish_time'])
+            
+            # 按发布时间降序排列
+            df = df.sort_values('publish_time', ascending=False).reset_index(drop=True)
+            
+            logger.info(f"成功获取个股新闻数据: {symbol}, 共{len(df)}条记录")
+            return df
+            
+        except Exception as e:
+            logger.error(f"获取个股新闻失败: {symbol}, 错误: {str(e)}")
+            return None
+
+    def get_global_stock_news(self) -> Optional[pd.DataFrame]:
+        """
+        获取新浪财经全球财经快讯
+        https://finance.sina.com.cn/7x24
+        
+        Returns:
+            pd.DataFrame | None: 全球财经快讯数据，包含时间和内容字段
+        """
+        try:
+            logger.info("正在获取新浪财经全球财经快讯...")
+            df = ak.stock_info_global_sina()
+            
+            if df is None or df.empty:
+                logger.warning("未获取到全球财经快讯数据")
+                return None
+                
+            # 数据清洗与标准化
+            df = df.rename(columns={
+                '时间': 'publish_time',
+                '内容': 'content'
+            })
+            
+            # 转换时间格式
+            df['publish_time'] = pd.to_datetime(df['publish_time'])
+            
+            # 按时间降序排列
+            df = df.sort_values('publish_time', ascending=False).reset_index(drop=True)
+            
+            logger.info(f"成功获取全球财经快讯，共{len(df)}条记录")
+            return df
+            
+        except Exception as e:
+            logger.error(f"获取全球财经快讯失败: {str(e)}")
+            return None
+
+
     def get_all_financial_data(self, symbol: str, periods: List[str] = None) -> Dict[str, pd.DataFrame]:  # type: ignore
         """
         获取所有财务数据
@@ -233,6 +313,18 @@ class AkShareClient:
         if stock_value_info is not None:
             result["stock_value_info"] = stock_value_info
 
+        # 获取新闻数据
+        if include_news:
+            # 获取全球财经快讯
+            global_news = self.get_global_stock_news()
+            if global_news is not None:
+                result["global_news"] = global_news.head(10).to_dict(orient="records")
+                
+            # 获取个股新闻
+            stock_news = self.get_stock_news_em(symbol.replace("SH", "").replace("SZ", ""))
+            if stock_news is not None:
+                result["stock_news"] = stock_news.head(10).to_dict(orient="records")
+
         logger.info(f"成功获取 {symbol} 的所有财务数据，包含 {len(result)} 个数据集")
 
         # test
@@ -270,7 +362,6 @@ class AkShareClient:
                 df[col] = pd.to_datetime(df[col], errors="ignore")  # type: ignore
 
         return df
-
 
 if __name__ == "__main__":
     client = AkShareClient()
