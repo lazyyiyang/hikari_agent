@@ -313,7 +313,7 @@ class AkShareClient:
         if stock_value_info is not None:
             result["stock_value_info"] = stock_value_info
 
-         # 获取新闻数据
+        # 获取新闻数据
         if include_news:
             # 获取全球财经快讯
             global_news = self.get_global_stock_news()
