@@ -1,6 +1,3 @@
-# Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
-# SPDX-License-Identifier: MIT
-
 import asyncio
 import logging
 from src.graph import build_graph
@@ -22,14 +19,6 @@ logger = logging.getLogger(__name__)
 
 # Create the graph
 graph = build_graph()
-
-
-messages = [
-    {
-        "role": "user",
-        "content": "写一份浦发银行的企业研究报告，需要包含估值分析",
-    }
-]
 thread_id = "123"
 resources = []
 max_plan_iterations = 1
@@ -42,7 +31,7 @@ mcp_settings = {
         "corp_valuation": {
             "transport": "sse",
             "url": "http://localhost:8005/mcp",
-            "enabled_tools": ["corp_valuation"],
+            "enabled_tools": ["corp_valuation", "fetch_company_data", "web_deep_search", "data_analysis_coder"],
             "add_to_agents": ["researcher"],
         }
     }
@@ -114,9 +103,11 @@ async def run_agent_workflow_async(
         except Exception as e:
             logger.error(f"Error processing stream output: {e}")
             print(f"Error processing output: {str(e)}")
-
+    if s.get("final_report"):
+        with open("result/final_report.md", "w", encoding="utf-8") as f:
+            f.write(s["final_report"])
     logger.info("Async workflow completed successfully")
 
 
 if __name__ == "__main__":  
-    asyncio.run(run_agent_workflow_async("写一份浦发银行的企业研究报告，需要包含估值分析"))
+    asyncio.run(run_agent_workflow_async("写一份浦发银行的企业研究报告"))

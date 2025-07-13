@@ -11,3 +11,9 @@ black
 flake8
 exa_py
 zhipuai
+langchain_deepseek
+markdownify
+readabilipy
+langchain_experimental
+json_repair
+duckduckgo-search

@@ -281,6 +281,13 @@ def reporter_node(state: State, config: RunnableConfig):
         )
     )
 
+    invoke_messages.append(
+        HumanMessage(
+            content=f"Here is some support data, FYI: {state['support_data']}",
+            name="system",
+        )
+    )
+
     for observation in observations:
         invoke_messages.append(
             HumanMessage(
@@ -444,19 +451,19 @@ async def _setup_and_execute_agent_step(
     enabled_tools = {}
 
     # Extract MCP server configuration for this agent type
-    if configurable.mcp_settings:
-        for server_name, server_config in configurable.mcp_settings["servers"].items():
-            if (
-                server_config["enabled_tools"]
-                and agent_type in server_config["add_to_agents"]
-            ):
-                mcp_servers[server_name] = {
-                    k: v
-                    for k, v in server_config.items()
-                    if k in ("transport", "command", "args", "url", "env")
-                }
-                for tool_name in server_config["enabled_tools"]:
-                    enabled_tools[tool_name] = server_name
+    # if configurable.mcp_settings:
+        # for server_name, server_config in configurable.mcp_settings["servers"].items():
+        #     if (
+        #         server_config["enabled_tools"]
+        #         and agent_type in server_config["add_to_agents"]
+        #     ):
+        #         mcp_servers[server_name] = {
+        #             k: v
+        #             for k, v in server_config.items()
+        #             if k in ("transport", "command", "args", "url", "env")
+        #         }
+        #         for tool_name in server_config["enabled_tools"]:
+        #             enabled_tools[tool_name] = server_name
 
     # Create and execute agent with MCP tools if available
     if mcp_servers:
@@ -513,3 +520,57 @@ async def coder_node(
         "coder",
         [python_repl_tool],
     )
+
+
+async def support_data_node(
+    state: State, config: RunnableConfig
+) -> Command[Literal["research_team"]]:
+    configurable = Configuration.from_runnable_config(config)
+    mcp_servers = {}
+    enabled_tools = {}
+    if configurable.mcp_settings:
+        for server_name, server_config in configurable.mcp_settings["servers"].items():
+            mcp_servers[server_name] = {
+                k: v
+                for k, v in server_config.items()
+                if k in ("transport", "command", "args", "url", "env")
+            }
+            for tool_name in server_config["enabled_tools"]:
+                enabled_tools[tool_name] = server_name
+
+    # Create and execute agent with MCP tools if available
+    if mcp_servers:
+        client = MultiServerMCPClient(mcp_servers)
+        mcp_tools = []
+        loaded_tools = []
+        for server_name, server_config in mcp_servers.items():
+            async with client.session(server_name) as session:
+                tools = await load_mcp_tools(session) 
+                mcp_tools.extend(tools)
+                for tool in mcp_tools:
+                    if tool.name in enabled_tools:
+                        tool.description = (
+                            f"Powered by '{enabled_tools[tool.name]}'.\n{tool.description}"
+                        )
+                        loaded_tools.append(tool)
+                agent = create_agent("support_data", "researcher", loaded_tools, "")
+                agent_response = await agent.ainvoke(state)
+                with open("tmp/data.json", "r", encoding="utf-8") as f:
+                    fin_data = json.load(f)
+
+                with open("tmp/search_data.json", "r", encoding="utf-8") as f:
+                    fin_search_data = json.load(f)
+
+                with open("tmp/valuation_data.json", "r", encoding="utf-8") as f:
+                    fin_valuation_data = json.load(f)   
+
+                last_response = agent_response["messages"][-1]
+                support_data = {
+                    "data": fin_data,
+                    "search_data": fin_search_data,
+                    "valuation_data": fin_valuation_data,
+                    "support_content": last_response
+                }
+    return {"support_data": support_data}
+
+    
