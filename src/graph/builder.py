@@ -47,10 +47,10 @@ def _build_base_graph():
     builder.add_node("researcher", researcher_node)
     builder.add_node("coder", coder_node)
     builder.add_node("human_feedback", human_feedback_node)
-    builder.add_node("support_data", support_data_node)
+    builder.add_node("support_data_node", support_data_node)
 
-    builder.add_edge(START, "support_data")
-    builder.add_edge("support_data", "coordinator")
+    builder.add_edge(START, "support_data_node")
+    builder.add_edge("support_data_node", "coordinator")
     builder.add_edge("background_investigator", "planner")
     builder.add_conditional_edges(
         "research_team",
