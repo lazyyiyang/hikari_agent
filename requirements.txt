@@ -17,3 +17,5 @@ readabilipy
 langchain_experimental
 json_repair
 duckduckgo-search
+trafilatura
+
