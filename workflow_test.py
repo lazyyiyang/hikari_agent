@@ -2,6 +2,9 @@ import asyncio
 import logging
 from src.graph import build_graph
 from src.config.report_style import ReportStyle
+import langchain
+langchain.debug = True  # Enable debug mode for LangChain
+
 
 # Configure logging
 logging.basicConfig(
@@ -31,7 +34,7 @@ mcp_settings = {
         "corp_valuation": {
             "transport": "sse",
             "url": "http://localhost:8005/mcp",
-            "enabled_tools": ["corp_valuation", "fetch_company_data", "web_deep_search", "data_analysis_coder"],
+            "enabled_tools": ["corp_valuation", "fetch_a_stock_data", "fetch_hk_stock_data", "data_analysis"],
             "add_to_agents": ["researcher"],
         }
     }
@@ -110,4 +113,4 @@ async def run_agent_workflow_async(
 
 
 if __name__ == "__main__":  
-    asyncio.run(run_agent_workflow_async("写一份浦发银行的企业研究报告"))
+    asyncio.run(run_agent_workflow_async("写一份商汤科技的研究报告"))

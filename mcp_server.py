@@ -8,7 +8,7 @@ from dotenv import load_dotenv
 
 # from template import CODER_PROMPT
 from template import VALUATION_PROMPT, ANALYSIS_PROMPT
-from data_sources import AkShareClient, zhipu_web_search
+from data_sources import AkShareClient, HkAkShareClient
 
 # from utils import parse_code
 from loguru import logger
@@ -22,13 +22,9 @@ ai_client = OpenAI(
 )
 
 
-@mcp.tool(description="输入上市公司股票代码，返回上市公司相关数据")
-def fetch_company_data(
-    code: Annotated[str, Field(description="上市公司股票代码, 如: SH600000， SZ000001")],
-    # report_type: Annotated[
-    #     list[Literal["一季报", "中报", "三季报", "年报"]],
-    #     Field(description="上市公司报告类型"),
-    # ],
+@mcp.tool(description="输入A股上市公司股票代码，返回上市公司相关数据")
+def fetch_a_stock_data(
+    code: Annotated[str, Field(description="A股上市公司股票代码, 如: SH600000， SZ000001")],
 ) -> str:
     report_type = ["年报"]
     client = AkShareClient()
@@ -38,15 +34,30 @@ def fetch_company_data(
     return "数据获取成功， 保存至tmp/data.json"
 
 
+@mcp.tool(description="输入港股上市公司股票代码，返回上市公司相关数据")
+def fetch_hk_stock_data(
+    code: Annotated[str, Field(description="港股上市公司股票代码, 如: 00020")],
+) -> str:
+    try:
+        client = HkAkShareClient()
+        result_dict = client.get_fin_data(code)
+        with open("tmp/data.json", "w", encoding="utf-8") as f:
+            json.dump(result_dict, f, ensure_ascii=False, indent=4)
+        return "数据获取成功， 保存至tmp/data.json"
+    except Exception as e:
+        logger.error(f"Error fetching HK stock data: {code}")
+        return "港股代码获取错误，重新输入正确的代码"
+
+
 @mcp.tool(description="需要对整理后的上市公司数据进行分析")
-def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的分析思路")]) -> str:
+def data_analysis(idea: Annotated[str, Field(description="待分析企业的行业特性")]) -> str:
     logger.info("分析结果生成中")
     with open("tmp/data.json", "r", encoding="utf-8") as f1:
         data = json.load(f1)
-    data = {k: v[0] for k, v in data.items()}
-    with open("tmp/search_data.json", "r", encoding="utf-8") as f2:
-        search_data = json.load(f2)
-    data.update({"search_results": search_data})
+    # data = {k: v[0] for k, v in data.items()}
+    # with open("tmp/search_data.json", "r", encoding="utf-8") as f2:
+    #     search_data = json.load(f2)
+    # data.update({"search_results": search_data})
 
     prompt = ANALYSIS_PROMPT.format(data=data, idea=idea)
     analysis_result = (
@@ -62,6 +73,8 @@ def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的�
         .choices[0]
         .message.content
     )
+    with open("tmp/analysis_result.md", "w", encoding="utf-8") as f:
+        f.write(analysis_result)
     logger.info(f"数据分析结果\n {analysis_result}")
     return analysis_result
 
@@ -69,9 +82,7 @@ def data_analysis_coder(idea: Annotated[str, Field(description="专业详细的�
 @mcp.tool(description="对公司进行估值，生成投资建议")
 def corp_valuation(
     idea: Annotated[str, Field(description="专业详细的估值模型构建")],
-    stock_value_info: Annotated[list, Field(description="上市公司估值信息")],
     code: Annotated[str, Field(description="上市公司股票代码, 如: SH600000， SZ000001")],
-    data_date: Annotated[str, Field(description="数据日期，如：2025-05-30")],
 ):
     client = AkShareClient()
     result_dict = client.get_stock_value(code)["stock_value"]
@@ -90,27 +101,9 @@ def corp_valuation(
         .choices[0]
         .message.content
     )
-    with open("tmp/valuation_data.json", "w", encoding="utf-8") as f:
-        json.dump(valuation_advice, f, ensure_ascii=False, indent=4)
-    return "数据获取成功， 保存至tmp/valuation_data.json"
-
-
-@mcp.tool(description="对问题进行深度搜索，生成相应的建议")
-def web_deep_search(idea: Annotated[str, Field(description="专业有根据的搜索")]) -> str:
-    search_result = "默认搜索结果"
-    try:
-        search_result = zhipu_web_search.web_search(
-            search_engine="search_pro",
-            search_query=f"{idea} 浦发银行估值分析",
-        )
-        logger.info("深度搜索完成")
-        with open("tmp/search_data.json", "w", encoding="utf-8") as f:
-            json.dump(search_result, f, ensure_ascii=False, indent=2)
-    except Exception as e:
-        logger.error(f"深度搜索失败:{e}")
-        search_result = f"搜索失败: {str(e)}"  # 异常时返回错误信息
-
-    return "数据获取成功， 保存至tmp/search_data.json"
+    with open("tmp/valuation_data.md", "w", encoding="utf-8") as f:
+        f.write(valuation_advice)
+    return "数据获取成功， 保存至tmp/valuation_data.md"
 
 
 if __name__ == "__main__":

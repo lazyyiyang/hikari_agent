@@ -4,10 +4,12 @@
 """
 
 from .akshare_client import AkShareClient
+from .hk_akshare_client import HkAkShareClient
 
 # from .search_client import SearchClient
 
 __all__ = [
     "AkShareClient",
+    "HkAkShareClient",
     #    "SearchClient",
 ]

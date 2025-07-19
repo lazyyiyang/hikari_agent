@@ -14,11 +14,10 @@ from langchain_mcp_adapters.client import MultiServerMCPClient
 from langchain_mcp_adapters.tools import load_mcp_tools
 
 from src.agents import create_agent
-from src.tools.search import LoggedTavilySearch
 from src.tools import (
     crawl_tool,
     get_web_search_tool,
-    get_retriever_tool,
+    # get_retriever_tool,
     python_repl_tool,
 )
 
@@ -51,27 +50,9 @@ def background_investigation_node(state: State, config: RunnableConfig):
     configurable = Configuration.from_runnable_config(config)
     query = state.get("research_topic")
     background_investigation_results = None
-    if SELECTED_SEARCH_ENGINE == SearchEngine.TAVILY.value:
-        searched_content = LoggedTavilySearch(
-            max_results=configurable.max_search_results
-        ).invoke(query)
-        if isinstance(searched_content, list):
-            background_investigation_results = [
-                f"## {elem['title']}\n\n{elem['content']}" for elem in searched_content
-            ]
-            return {
-                "background_investigation_results": "\n\n".join(
-                    background_investigation_results
-                )
-            }
-        else:
-            logger.error(
-                f"Tavily search returned malformed response: {searched_content}"
-            )
-    else:
-        background_investigation_results = get_web_search_tool(
-            configurable.max_search_results
-        ).invoke(query)
+    background_investigation_results = get_web_search_tool(
+        configurable.max_search_results
+    ).invoke(query)
     return {
         "background_investigation_results": json.dumps(
             background_investigation_results, ensure_ascii=False
@@ -251,7 +232,7 @@ def coordinator_node(
         update={
             "locale": locale,
             "research_topic": research_topic,
-            "resources": configurable.resources,
+            # "resources": configurable.resources,
         },
         goto=goto,
     )
@@ -497,9 +478,6 @@ async def researcher_node(
     logger.info("Researcher node is researching.")
     configurable = Configuration.from_runnable_config(config)
     tools = [get_web_search_tool(configurable.max_search_results), crawl_tool]
-    # retriever_tool = get_retriever_tool(state.get("resources", []))
-    # if retriever_tool:
-    #     tools.insert(0, retriever_tool)
     logger.info(f"Researcher tools: {tools}")
     return await _setup_and_execute_agent_step(
         state,
@@ -555,21 +533,25 @@ async def support_data_node(
                         loaded_tools.append(tool)
                 agent = create_agent("support_data", "researcher", loaded_tools, "")
                 agent_response = await agent.ainvoke(state)
-                with open("tmp/data.json", "r", encoding="utf-8") as f:
-                    fin_data = json.load(f)
+                # with open("tmp/data.json", "r", encoding="utf-8") as f:
+                #     fin_data = json.load(f)
 
-                with open("tmp/search_data.json", "r", encoding="utf-8") as f:
-                    fin_search_data = json.load(f)
+                # with open("tmp/search_data.json", "r", encoding="utf-8") as f:
+                #     fin_search_data = json.load(f)
 
-                with open("tmp/valuation_data.json", "r", encoding="utf-8") as f:
-                    fin_valuation_data = json.load(f)   
+                # with open("tmp/valuation_data.json", "r", encoding="utf-8") as f:
+                #     fin_valuation_data = json.load(f)   
+
+                with open("tmp/analysis_result.md", "r", encoding="utf-8") as f:
+                    fin_analysis_result = f.read()
 
                 last_response = agent_response["messages"][-1]
                 support_data = {
-                    "data": fin_data,
-                    "search_data": fin_search_data,
-                    "valuation_data": fin_valuation_data,
-                    "support_content": last_response
+                    # "data": fin_data,
+                    # "search_data": fin_search_data,
+                    # "valuation_data": fin_valuation_data,
+                    "support_content": last_response.content,
+                    "analysis_result": fin_analysis_result,
                 }
     return {"support_data": support_data}
 
