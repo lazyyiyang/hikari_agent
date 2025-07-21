@@ -113,4 +113,4 @@ async def run_agent_workflow_async(
 
 
 if __name__ == "__main__":  
-    asyncio.run(run_agent_workflow_async("写一份商汤科技的研究报告"))
+    asyncio.run(run_agent_workflow_async("写一份关于生成式AI基建与算力投资趋势（2023-2026）的宏观分析报告"))

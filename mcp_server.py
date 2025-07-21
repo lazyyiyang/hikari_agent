@@ -52,8 +52,12 @@ def fetch_hk_stock_data(
 @mcp.tool(description="需要对整理后的上市公司数据进行分析")
 def data_analysis(idea: Annotated[str, Field(description="待分析企业的行业特性")]) -> str:
     logger.info("分析结果生成中")
-    with open("tmp/data.json", "r", encoding="utf-8") as f1:
-        data = json.load(f1)
+    data = {}
+    if os.path.exists("tmp/data.json"):
+        with open("tmp/data.json", "r", encoding="utf-8") as f1:
+            data = json.load(f1)
+    else:
+        return "没有需要分析的上市企业财务数据，请先尝试获取一些相关上市企业的财务数据"
     # data = {k: v[0] for k, v in data.items()}
     # with open("tmp/search_data.json", "r", encoding="utf-8") as f2:
     #     search_data = json.load(f2)

@@ -67,7 +67,12 @@ def planner_node(
     logger.info("Planner generating full plan")
     configurable = Configuration.from_runnable_config(config)
     plan_iterations = state["plan_iterations"] if state.get("plan_iterations", 0) else 0
-    messages = apply_prompt_template("planner", state, configurable)
+    if "企业分析" in state["messages"][0].content:
+        messages = apply_prompt_template("planner", state, configurable)
+    elif "行业分析" in state["messages"][0].content:
+        messages = apply_prompt_template("planner_industry", state, configurable)
+    elif "宏观分析" in state["messages"][0].content:
+        messages = apply_prompt_template("planner_macro", state, configurable)
 
     if state.get("enable_background_investigation") and state.get(
         "background_investigation_results"
@@ -541,9 +546,11 @@ async def support_data_node(
 
                 # with open("tmp/valuation_data.json", "r", encoding="utf-8") as f:
                 #     fin_valuation_data = json.load(f)   
-
-                with open("tmp/analysis_result.md", "r", encoding="utf-8") as f:
-                    fin_analysis_result = f.read()
+                try:
+                    with open("tmp/analysis_result.md", "r", encoding="utf-8") as f:
+                        fin_analysis_result = f.read()
+                except:
+                    fin_analysis_result = ""
 
                 last_response = agent_response["messages"][-1]
                 support_data = {
